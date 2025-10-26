@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parte Diario de Mantenimiento - PROMAUTO</title>
+    
+    <!-- Librerías necesarias -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/4.1.7/signature_pad.umd.min.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .form-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="text"], input[type="number"], input[type="date"], select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        /* Estilo específico para campos en mayúsculas */
+        .uppercase-field {
+            text-transform: uppercase;
+        }
+        
+        textarea {
+            min-height: 80px;
+        }
+        
+        .signature-area {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature-box {
+            width: 45%;
+            text-align: center;
+        }
+        
+        /* Estilos para el canvas de la firma */
+        .signature-canvas-container {
+            position: relative;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+            background-color: #fafafa;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 120px;
+            touch-action: none; /* Previene el scroll al firmar en móviles */
+        }
+        
+        .btn-clear-signature {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        #generatePdf {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        #resetForm {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        /* VISTA PREVIA MEJORADA CON TABLAS CON BORDES VISIBLES */
+        .preview-container {
+            margin-top: 30px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            background-color: white;
+            display: none;
+            width: 200mm; /* Reducido 5% del ancho A4 (210mm) */
+            min-height: 282mm; /* Reducido 5% del alto A4 (297mm) */
+            box-sizing: border-box;
+            transform: scale(0.95); /* Escala al 95% para impresión */
+            transform-origin: top left;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .preview-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000;
+        }
+        
+        .preview-title-main {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #000 !important;
+        }
+        
+        .preview-title-sub {
+            font-size: 16px;
+            margin-top: 0;
+            font-weight: bold;
+            color: #000 !important;
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 12px;
+            border: 2px solid #000 !important; /* Borde exterior más grueso */
+        }
+        
+        .preview-table td {
+            padding: 8px 5px;
+            border: 1px solid #000 !important; /* Bordes visibles y negros */
+            vertical-align: top;
+            font-weight: bold !important; /* TODAS LAS LETRAS EN NEGRITA */
+            color: #000 !important; /* TEXTO MÁS OSCURO */
+        }
+        
+        .preview-table .section-title {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .preview-signature-area {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .preview-signature-box {
+            width: 45%;
+            text-align: center;
+        }
+        
+        .preview-signature-box p {
+            font-weight: bold !important;
+            color: #000 !important;
+            margin-bottom: 5px;
+        }
+        
+        .preview-signature-img {
+            width: 100%;
+            height: 80px;
+            border: 1px solid #000 !important;
+            margin-top: 5px;
+        }
+        
+        .preview-observations {
+            min-height: 60px;
+            border: 1px solid #000 !important;
+            padding: 5px;
+            margin-top: 5px;
+            font-weight: bold !important;
+            color: #000 !important;
+        }
+        
+        /* Estilo específico para la tabla principal con líneas uniformes */
+        .preview-main-table {
+            border: 2px solid #000 !important;
+        }
+        
+        .preview-main-table td {
+            border: 1px solid #000 !important;
+            padding: 6px 4px;
+            font-weight: bold !important;
+            color: #000 !important;
+        }
+
+        /* Estilos para impresión */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .preview-container, .preview-container * {
+                visibility: visible;
+            }
+            .preview-container {
+                position: absolute;
+                left: 5mm; /* Margen izquierdo para centrar */
+                top: 5mm; /* Margen superior */
+                width: 200mm; /* Ancho reducido 5% */
+                margin: 0;
+                padding: 15px;
+                box-shadow: none;
+                transform: scale(1);
+            }
+            
+            .preview-container * {
+                font-weight: bold !important;
+                color: #000 !important;
+            }
+        }
+
+        /* Estilos específicos para texto en negrita y oscuro */
+        .preview-text-bold {
+            font-weight: bold !important;
+            color: #000 !important;
+        }
+        
+        .preview-value {
+            font-weight: bold !important;
+            color: #000 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Parte Diario de Mantenimiento - PROMAUTO</h1>
+        
+        <form id="maintenanceForm">
+            <div class="form-section">
+                <h2>Datos del Vehículo y Conductor</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="matricula">Matrícula:</label>
+                        <input type="text" id="matricula" name="matricula" required class="uppercase-field">
+                    </div>
+                    <div class="form-group">
+                        <label for="conductor">Conductor:</label>
+                        <input type="text" id="conductor" name="conductor" required class="uppercase-field">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fecha">Fecha:</label>
+                        <input type="date" id="fecha" name="fecha" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Kilometraje</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="kmSalida">KM Salida:</label>
+                        <input type="number" id="kmSalida" name="kmSalida" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="kmLlegada">KM Llegada:</label>
+                        <input type="number" id="kmLlegada" name="kmLlegada" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="kmRecorridos">KM Recorridos:</label>
+                        <input type="number" id="kmRecorridos" name="kmRecorridos" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Estado del Vehículo</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Estado Carrocería:</label>
+                        <select id="estadoCarroceria" name="estadoCarroceria">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Deficiente">Deficiente</option>
+                            <option value="Malo">Malo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Limpieza Exterior:</label>
+                        <select id="limpiezaExterior" name="limpiezaExterior">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Deficiente">Deficiente</option>
+                            <option value="Malo">Malo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Limpieza Interior:</label>
+                        <select id="limpiezaInterior" name="limpiezaInterior">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Deficiente">Deficiente</option>
+                            <option value="Malo">Malo</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Documentación:</label>
+                        <select id="documentacion" name="documentacion">
+                            <option value="Completa">Completa</option>
+                            <option value="Incompleta">Incompleta</option>
+                            <option value="Falta">Falta</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado Frenos:</label>
+                        <select id="estadoFrenos" name="estadoFrenos">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Deficiente">Deficiente</option>
+                            <option value="Malo">Malo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado Neumáticos:</label>
+                        <select id="estadoNeumaticos" name="estadoNeumaticos">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Deficiente">Deficiente</option>
+                            <option value="Malo">Malo</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Estado Luces:</label>
+                        <select id="estadoLuces" name="estadoLuces">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Deficiente">Deficiente</option>
+                            <option value="Malo">Malo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Control Herramientas:</label>
+                        <select id="controlHerramientas" name="controlHerramientas">
+                            <option value="Completo">Completo</option>
+                            <option value="Incompleto">Incompleto</option>
+                            <option value="Falta">Falta</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Niveles de Fluidos</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nivel Aceite Motor:</label>
+                        <select id="nivelAceiteMotor" name="nivelAceiteMotor">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Bajo">Bajo</option>
+                            <option value="Muy Bajo">Muy Bajo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel Aceite de Cambio:</label>
+                        <select id="nivelAceiteCambio" name="nivelAceiteCambio">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Bajo">Bajo</option>
+                            <option value="Muy Bajo">Muy Bajo</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nivel Aceite Hidráulico:</label>
+                        <select id="nivelAceiteHidraulico" name="nivelAceiteHidraulico">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Bajo">Bajo</option>
+                            <option value="Muy Bajo">Muy Bajo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel Aceite Dirección:</label>
+                        <select id="nivelAceiteDireccion" name="nivelAceiteDireccion">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Bajo">Bajo</option>
+                            <option value="Muy Bajo">Muy Bajo</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nivel Líquido de Frenos:</label>
+                        <select id="nivelLiquidoFrenos" name="nivelLiquidoFrenos">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Bajo">Bajo</option>
+                            <option value="Muy Bajo">Muy Bajo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel Líquido Refrigerante:</label>
+                        <select id="nivelLiquidoRefrigerante" name="nivelLiquidoRefrigerante">
+                            <option value="Correcto">Correcto</option>
+                            <option value="Bajo">Bajo</option>
+                            <option value="Muy Bajo">Muy Bajo</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Observaciones</h2>
+                <div class="form-row">
+                    <div class="form-group" style="width: 100%;">
+                        <label for="observaciones">Observaciones de cualquier anomalía:</label>
+                        <textarea id="observaciones" name="observaciones"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECCIÓN DE FIRMAS -->
+            <div class="signature-area">
+                <div class="signature-box">
+                    <p>Firma Conductor</p>
+                    <div class="signature-canvas-container">
+                        <canvas id="firma-conductor-canvas"></canvas>
+                        <button type="button" class="btn-clear-signature" data-target="firma-conductor-canvas">Borrar</button>
+                    </div>
+                </div>
+                <div class="signature-box">
+                    <p>Responsable Control</p>
+                    <div class="signature-canvas-container">
+                        <canvas id="firma-responsable-canvas"></canvas>
+                        <button type="button" class="btn-clear-signature" data-target="firma-responsable-canvas">Borrar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button type="button" id="generatePdf">Generar PDF</button>
+                <button type="button" id="resetForm">Limpiar Formulario</button>
+            </div>
+        </form>
+        
+        <!-- VISTA PREVIA MEJORADA PARA PDF -->
+        <div id="preview" class="preview-container">
+            <div class="preview-header">
+                <div class="preview-title-main">PROMAUTO</div>
+                <div class="preview-title-sub">Parte Diaria De Mantenimento</div>
+            </div>
+            
+            <!-- TABLA PRINCIPAL CON BORDES VISIBLES Y UNIFORMES -->
+            <table class="preview-table preview-main-table">
+                <tr>
+                    <td class="preview-text-bold">MATRICULA:</td>
+                    <td id="preview-matricula" class="preview-value"></td>
+                    <td class="preview-text-bold">CONDUCTOR:</td>
+                    <td id="preview-conductor" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">KM SALIDA:</td>
+                    <td id="preview-kmSalida" class="preview-value"></td>
+                    <td class="preview-text-bold">KM LLEGADA:</td>
+                    <td id="preview-kmLlegada" class="preview-value"></td>
+                    <td class="preview-text-bold">KM RECORRIDOS:</td>
+                    <td id="preview-kmRecorridos" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">FECHA:</td>
+                    <td colspan="5" id="preview-fecha" class="preview-value"></td>
+                </tr>
+            </table>
+            
+            <!-- LISTA DE VERIFICACIONES CON BORDES UNIFORMES -->
+            <table class="preview-table preview-main-table">
+                <tr>
+                    <td class="preview-text-bold">ESTADO CARROCERIA</td>
+                    <td id="preview-estadoCarroceria" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">ESTADO LIMPIEZA EXTERIOR</td>
+                    <td id="preview-limpiezaExterior" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">ESTADO LIMPIEZA INTERIOR</td>
+                    <td id="preview-limpiezaInterior" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">DOCUMENTACION</td>
+                    <td id="preview-documentacion" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">ESTADO FRENOS</td>
+                    <td id="preview-estadoFrenos" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">ESTADO NEUMATICOS</td>
+                    <td id="preview-estadoNeumaticos" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">ESTADO LUCES</td>
+                    <td id="preview-estadoLuces" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">CONTROL HERAMIENTAS</td>
+                    <td id="preview-controlHerramientas" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">NIVEL DE ACEITE MOTOR</td>
+                    <td id="preview-nivelAceiteMotor" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">NIVEL ACEITE DE CAMBIO</td>
+                    <td id="preview-nivelAceiteCambio" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">NIVEL ACEITE HIDRAULICO</td>
+                    <td id="preview-nivelAceiteHidraulico" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">NIVEL ACEITE DIRECCION</td>
+                    <td id="preview-nivelAceiteDireccion" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">NIVEL LIQUIDO DE FRENOS</td>
+                    <td id="preview-nivelLiquidoFrenos" class="preview-value"></td>
+                </tr>
+                <tr>
+                    <td class="preview-text-bold">NIVEL LIQUIDO REFRIGERANTE</td>
+                    <td id="preview-nivelLiquidoRefrigerante" class="preview-value"></td>
+                </tr>
+            </table>
+            
+            <!-- OBSERVACIONES CON BORDE UNIFORME -->
+            <table class="preview-table preview-main-table">
+                <tr>
+                    <td class="preview-text-bold">OBSERVACIONES DE CUALQUIER ANOMALIA:</td>
+                </tr>
+                <tr>
+                    <td class="preview-observations" id="preview-observaciones"></td>
+                </tr>
+            </table>
+            
+            <!-- FIRMAS CON BORDES VISIBLES Y UNIFORMES -->
+            <div class="preview-signature-area">
+                <div class="preview-signature-box">
+                    <p class="preview-text-bold">FIRMA CONDUCTOR:</p>
+                    <img id="preview-firma-conductor" src="" class="preview-signature-img">
+                </div>
+                <div class="preview-signature-box">
+                    <p class="preview-text-bold">RESPONSABLE CONTROL:</p>
+                    <img id="preview-firma-responsable" src="" class="preview-signature-img">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- CONVERSIÓN AUTOMÁTICA A MAYÚSCULAS ---
+            const matriculaInput = document.getElementById('matricula');
+            const conductorInput = document.getElementById('conductor');
+            
+            // Función para convertir a mayúsculas
+            function convertirAMayusculas(input) {
+                input.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase();
+                });
+                
+                // También convertir cuando se pega texto
+                input.addEventListener('paste', function(e) {
+                    setTimeout(() => {
+                        this.value = this.value.toUpperCase();
+                    }, 0);
+                });
+            }
+            
+            // Aplicar a ambos campos
+            convertirAMayusculas(matriculaInput);
+            convertirAMayusculas(conductorInput);
+            
+            // --- INICIALIZACIÓN DE LAS FIRMAS ---
+            const canvasConductor = document.getElementById('firma-conductor-canvas');
+            const canvasResponsable = document.getElementById('firma-responsable-canvas');
+            
+            // Ajustar el tamaño del canvas para que no se vea borroso
+            function resizeCanvas(canvas) {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+            }
+            resizeCanvas(canvasConductor);
+            resizeCanvas(canvasResponsable);
+
+            const signaturePadConductor = new SignaturePad(canvasConductor, {
+                minWidth: 2, // Línea más gruesa para mejor visibilidad
+                maxWidth: 4,
+                penColor: "rgb(0, 0, 0)", // Negro puro
+                throttle: 0 // Mejor respuesta al dibujar
+            });
+            
+            const signaturePadResponsable = new SignaturePad(canvasResponsable, {
+                minWidth: 2,
+                maxWidth: 4,
+                penColor: "rgb(0, 0, 0)",
+                throttle: 0
+            });
+
+            // --- BOTONES DE BORRAR FIRMA ---
+            document.querySelectorAll('.btn-clear-signature').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const targetId = e.target.getAttribute('data-target');
+                    if (targetId === 'firma-conductor-canvas') {
+                        signaturePadConductor.clear();
+                    } else if (targetId === 'firma-responsable-canvas') {
+                        signaturePadResponsable.clear();
+                    }
+                });
+            });
+
+            // --- LÓGICA DEL FORMULARIO ---
+            const kmSalida = document.getElementById('kmSalida');
+            const kmLlegada = document.getElementById('kmLlegada');
+            const kmRecorridos = document.getElementById('kmRecorridos');
+            
+            function calcularKmRecorridos() {
+                if (kmSalida.value && kmLlegada.value) {
+                    const salida = parseInt(kmSalida.value);
+                    const llegada = parseInt(kmLlegada.value);
+                    if (llegada >= salida) {
+                        kmRecorridos.value = llegada - salida;
+                    }
+                }
+            }
+            
+            kmSalida.addEventListener('change', calcularKmRecorridos);
+            kmLlegada.addEventListener('change', calcularKmRecorridos);
+            
+            // --- GENERAR PDF MEJORADO ---
+            document.getElementById('generatePdf').addEventListener('click', function() {
+                // Validar campos obligatorios
+                if (!document.getElementById('matricula').value || 
+                    !document.getElementById('conductor').value) {
+                    alert('Por favor complete MATRICULA y CONDUCTOR');
+                    return;
+                }
+                
+                // Actualizar vista previa con datos del formulario (ya en mayúsculas automáticamente)
+                document.getElementById('preview-matricula').textContent = document.getElementById('matricula').value;
+                document.getElementById('preview-conductor').textContent = document.getElementById('conductor').value;
+                document.getElementById('preview-kmSalida').textContent = document.getElementById('kmSalida').value;
+                document.getElementById('preview-kmLlegada').textContent = document.getElementById('kmLlegada').value;
+                document.getElementById('preview-kmRecorridos').textContent = document.getElementById('kmRecorridos').value;
+                
+                const fecha = new Date(document.getElementById('fecha').value);
+                document.getElementById('preview-fecha').textContent = fecha.toLocaleDateString('es-ES');
+                
+                document.getElementById('preview-estadoCarroceria').textContent = document.getElementById('estadoCarroceria').value;
+                document.getElementById('preview-limpiezaExterior').textContent = document.getElementById('limpiezaExterior').value;
+                document.getElementById('preview-limpiezaInterior').textContent = document.getElementById('limpiezaInterior').value;
+                document.getElementById('preview-documentacion').textContent = document.getElementById('documentacion').value;
+                document.getElementById('preview-estadoFrenos').textContent = document.getElementById('estadoFrenos').value;
+                document.getElementById('preview-estadoNeumaticos').textContent = document.getElementById('estadoNeumaticos').value;
+                document.getElementById('preview-estadoLuces').textContent = document.getElementById('estadoLuces').value;
+                document.getElementById('preview-controlHerramientas').textContent = document.getElementById('controlHerramientas').value;
+                
+                document.getElementById('preview-nivelAceiteMotor').textContent = document.getElementById('nivelAceiteMotor').value;
+                document.getElementById('preview-nivelAceiteCambio').textContent = document.getElementById('nivelAceiteCambio').value;
+                document.getElementById('preview-nivelAceiteHidraulico').textContent = document.getElementById('nivelAceiteHidraulico').value;
+                document.getElementById('preview-nivelAceiteDireccion').textContent = document.getElementById('nivelAceiteDireccion').value;
+                document.getElementById('preview-nivelLiquidoFrenos').textContent = document.getElementById('nivelLiquidoFrenos').value;
+                document.getElementById('preview-nivelLiquidoRefrigerante').textContent = document.getElementById('nivelLiquidoRefrigerante').value;
+                
+                document.getElementById('preview-observaciones').textContent = document.getElementById('observaciones').value;
+
+                // Añadir las firmas a la vista previa
+                if (!signaturePadConductor.isEmpty()) {
+                    document.getElementById('preview-firma-conductor').src = signaturePadConductor.toDataURL();
+                } else {
+                    document.getElementById('preview-firma-conductor').style.backgroundColor = "#f9f9f9";
+                }
+                
+                if (!signaturePadResponsable.isEmpty()) {
+                    document.getElementById('preview-firma-responsable').src = signaturePadResponsable.toDataURL();
+                } else {
+                    document.getElementById('preview-firma-responsable').style.backgroundColor = "#f9f9f9";
+                }
+                
+                // Mostrar vista previa y generar PDF
+                const element = document.getElementById('preview');
+                element.style.display = 'block';
+                
+                const { jsPDF } = window.jspdf;
+                
+                html2canvas(element, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    width: element.offsetWidth,
+                    height: element.offsetHeight
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const imgWidth = 200; // Reducido 5% (210mm * 0.95 = 199.5mm ≈ 200mm)
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    
+                    // Centrar la imagen en el PDF
+                    const x = (210 - imgWidth) / 2; // Centrar horizontalmente
+                    const y = (297 - imgHeight) / 2; // Centrar verticalmente
+                    
+                    pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+                    
+                    pdf.save('Parte_Mantenimiento_' + document.getElementById('matricula').value + '_' + document.getElementById('fecha').value + '.pdf');
+                    
+                    // Ocultar la vista previa después de generar el PDF
+                    element.style.display = 'none';
+                }).catch(error => {
+                    console.error('Error al generar PDF:', error);
+                    alert('Error al generar el PDF. Por favor, intente nuevamente.');
+                    element.style.display = 'none';
+                });
+            });
+            
+            // --- LIMPIAR FORMULARIO ---
+            document.getElementById('resetForm').addEventListener('click', function() {
+                if (confirm('¿Está seguro de que desea limpiar todo el formulario?')) {
+                    document.getElementById('maintenanceForm').reset();
+                    document.getElementById('preview').style.display = 'none';
+                    // Limpiar también las firmas
+                    signaturePadConductor.clear();
+                    signaturePadResponsable.clear();
+                    // Restablecer fecha actual
+                    const today = new Date();
+                    const formattedDate = today.toISOString().split('T')[0];
+                    document.getElementById('fecha').value = formattedDate;
+                }
+            });
+            
+            // Establecer fecha actual por defecto
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('fecha').value = formattedDate;
+        });
+    </script>
+</body>
+</html>
